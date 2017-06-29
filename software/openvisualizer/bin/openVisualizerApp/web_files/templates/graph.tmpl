@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html>
+	<head> 
+		%include head.tmpl
+		<link rel="stylesheet" type="text/css" href="/static/css/d3.css" />
+		<script src="/static/js/d3.min.js" charset="utf-8"></script>
+		<script src="/static/js/dagre-d3.min.js"></script>
+		<script src="//d3js.org/d3.v3.min.js"></script>
+		<script src="/static/js/vis-4.20.0/dist/vis.js"></script>
+ 		<link href="/static/js/vis-4.20.0/dist/vis.css" rel="stylesheet" type="text/css" />
+
+
+	</head>
+  <style type="text/css"> 
+    /* This is the network background */	
+    #mynetwork {
+      width: 1000px;
+      height: 600px;
+      border: 1px solid lightgray;
+    }
+  </style>
+	<body>
+		<div id="wrapper">
+			%include navbar.tmpl ovVersion=ovVersion, roverMode=roverMode
+
+			<div id="page-wrapper">
+	            <div class="row">
+	                <div class="col-lg-12">
+	                    <h1 class="page-header">Graph</h1>
+	                </div>
+	            </div>
+				
+
+				<!-- Creation of checkboxes to hidde legend and Rx edges -->
+	            <p>
+					Hidden Rx edges?
+					<input type="checkbox" onchange="updateNetwork();" id="hiddenbox" /><br>
+					Hidden nodes legend?
+					<input type="checkbox" onchange="updateNetwork();" id="hiddenlegend" /><br>
+				</p>
+
+<div id="mynetwork"></div>
+	            <script>
+					var graph = 0;
+			        var n_dots = 1;
+					var edges, nodes, network;
+			        $( document ).ready(function() {
+			            $.ajax({
+			                    dataType: "json",
+			                    url: "/graph/stats",
+			                    success: updateForData,
+			                    error: errorOnAjax
+			                });
+			        });
+			        
+			        function updateForData(json) {
+			            // Updates DAG
+			            console.log('DAG data received');
+			            var hasJson = true
+			            if (json.result && json.result == "none") {
+			                console.log('no data in result');
+			                hasJson = false;
+			            } /*else if (!json.graph.states || !json.graph.edges || !json.stats) {
+			                console.log('state/edges not found in result');
+			                hasJson = false;
+			            }*/
+			            
+			            if (hasJson) {
+			                //if(json.graph.states.length > 0 && json.graph.edges.length > 0) {
+			                if(json.motelist.length > 0 ) {
+			                    $("#routing_status").text("");
+			                    /*	Json import from OpenVisualizerWeb.py */
+			                    var motelist = json.motelist;    
+			                    var stats = json.states;		
+								var queues = json.queues;		
+								var DAGroot = json.DAGroot;		
+								
+								/*Creating Network */
+								function startnetwork() {
+									var nodesArray=[];
+									var edgesArray=[];
+									var hidden = document.getElementById("hiddenbox").checked;
+									var legend = document.getElementById("hiddenlegend").checked;									
+
+									for (i=0; i<queues.length; i++) {
+										var id = queues[i].moteid;
+										tmp = JSON.parse(queues[i].queue);
+										var title = "";
+										var title2 = "";
+										var count = 0;
+										for (k=0; k<tmp.length; k++) {
+											if( tmp[k].trackInstance > 0) {
+												title += "track owner " + tmp[k].trackOwner + "<br>";
+												// title += "nextHop " + tmp[k].nextHop + "<br>";
+												count += 1;
+											}
+										}
+										 /* Node coloration in function of queues's elements */
+										var color = '#9EFD38';   
+										var fontcolor = 'black'; 
+										if (count > 2){
+											color = 'orange';
+											if (count > 10){
+												color = 'red';
+												if (count > 17){
+													color = 'black';
+													fontcolor = 'white';
+												}
+											}
+										}
+										title2 = count.toString() + " element(s) <br>" + title;
+										/* Creating the DAGroot's node*/
+										if (id == DAGroot) { 
+											nodesArray.push({id: id, label: id, fixed: true, shape: 'box', title: title2, color: {background: color, highlight: {background: color, border: 'black'}}, font: {color: fontcolor}});
+										}
+										/* Creating every nodes exept DAGroot */
+										else {
+											nodesArray.push({id: id, label: id, fixed: false, title: title2, color: {background: color, highlight: {background: color, border: 'black'}}, font: {color: fontcolor}});
+										}							
+									}
+									
+									var maxTx = 0;
+									for (j=0; j<stats.length; j++) {
+										tmp = JSON.parse(stats[j].neighbors);
+										for (k=0; k<tmp.length; k++) {
+											if ((tmp[k].numTx) > maxTx) {
+												maxTx = tmp[k].numTx;
+	 										}  
+										}
+									}
+
+									/* Edges creation */
+									for (j=0; j<stats.length; j++) { 
+										var id = stats[j].moteid;
+										tmp = JSON.parse(stats[j].neighbors);
+										for (k=0; k<tmp.length; k++) {
+											if ((tmp[k].numTx) > 0) {
+												var color = 'orange';
+												if ((tmp[k].numTxACK/tmp[k].numTx) > 0.9) {
+													color = 'green';}
+												else if ((tmp[k].numTxACK/tmp[k].numTx) < 0.5) {
+													color = 'red';}
+												var size = tmp[k].numTx/maxTx*10;
+												var addr = tmp[k].addr.substring(18,20) +tmp[k].addr.substring(21,23);
+												var title = "numTx = " + tmp[k].numTx.toString() + "<br> numTxACK = " + tmp[k].numTxACK.toString();
+												edgesArray.push({from: id, to: addr, arrows: 'to', arrowsize: size, width: size, color: color, title: title});							}
+											else if ((tmp[k].numRx) > 0) {
+												var color = 'blue';
+												var addr = tmp[k].addr.substring(18,20) +tmp[k].addr.substring(21,23);
+												var title = "numRx = " + tmp[k].numRx.toString();
+												edgesArray.push({from: id, to: addr, arrows: 'from', arrowsize: size, color: color, title: title, dashes: true, hidden: hidden});						}		
+										}
+									}
+									/* Legend creation */
+									nodesArray.push({id: 1, label:'0-2 packet in queue', color: '#9EFD38',fixed: true, x: 400, y: -100,hidden: legend});
+									nodesArray.push({id: 2, label:'2-10 packet in queue', color: 'orange',fixed: true, x: 400, y: -50,hidden: legend});
+									nodesArray.push({id: 3, label:'10-17 packet in queue', color: 'red',fixed: true, x: 400, y: 0,hidden: legend});	
+									nodesArray.push({id: 4, label:'17-20 packet in queue', color: {background: 'black', highlight: {background: 'black', border: 'black'}}, font: {color: 'white'},fixed: true, x: 400, y: 50,hidden: legend});
+
+	  								/* Creating Network (ie vis.js doc) */
+									var container = document.getElementById('mynetwork');
+									nodes = new vis.DataSet(nodesArray);
+									edges = new vis.DataSet(edgesArray);
+	  								var data = {
+										nodes: nodes,
+										edges: edges
+									};
+									/* Options from vis.js */
+									var options = {
+										interaction: {selectable: true,
+											selectConnectedEdges: false,
+											tooltipDelay: 0
+										},
+										edges: {smooth: { type: "curvedCW", roundness: 0.125  }},
+										nodes: {physics: false, color: {border: 'black'}}
+									};
+									network = new vis.Network(container, data, options);
+									/* Open the node window when double click on it */
+									network.on("doubleClick", function(properties) { 
+									  if(!properties.nodes.length) return;
+
+									  var node = nodes.get(properties.nodes[0]);
+									  if (node.id != 1 && node.id != 2 && node.id != 3 && node.id != 4){
+										  window.open("http://localhost:8080/moteview/"+node.label, "_blank");
+										}
+									});
+
+
+
+								}
+								
+								/* Updating Network */
+								function updateNetwork(){
+									var nodesArray=[];
+									var edgesArray=[];
+									hidden = document.getElementById("hiddenbox").checked;
+									legend = document.getElementById("hiddenlegend").checked;									
+									edges.clear();
+									for (i=0; i<queues.length; i++) {
+										var id = queues[i].moteid;
+										tmp = JSON.parse(queues[i].queue);
+										var title = "";
+										var title2 = "test";
+										var count = 0;
+										for (k=0; k<tmp.length; k++) {
+											if( tmp[k].trackInstance > 0) {
+												title += "track owner " + tmp[k].trackOwner + "<br>";
+												// title += "nextHop " + tmp[k].nextHop + "<br>";
+												count += 1;
+											}
+										}
+
+										var color = '#9EFD38';
+										var fontcolor = 'black';
+										if (count > 2){
+											color = 'orange';
+											if (count > 10){
+												color = 'red';
+												if (count > 17){
+													color = 'black';
+													fontcolor = 'white';
+												}
+											}
+										}
+										title2 = count.toString() + " element(s) <br>" + title;
+										if (id == DAGroot) {
+											nodesArray.push({id: id, label: id, fixed: true, shape: 'box', title: title2, color: {background: color, highlight: {background: color, border: 'black'}}, font: {color: fontcolor}});
+										}
+										else {
+											nodesArray.push({id: id, label: id, fixed: false, title: title2, color: {background: color, highlight: {background: color, border: 'black'}}, font: {color: fontcolor}});
+										}
+														
+									}
+									
+
+									var maxTx = 0;
+									for (j=0; j<stats.length; j++){
+										tmp = JSON.parse(stats[j].neighbors);
+										for (k=0; k<tmp.length; k++){
+											if ((tmp[k].numTx) > maxTx){
+												maxTx = tmp[k].numTx;
+	 										}  
+										}
+									}
+									for (j=0; j<stats.length; j++) {
+										var id = stats[j].moteid;
+										tmp = JSON.parse(stats[j].neighbors);
+										for (k=0; k<tmp.length; k++) {
+											if ((tmp[k].numTx) > 0) {
+												var color = 'orange';
+												if ((tmp[k].numTxACK/tmp[k].numTx) > 0.9) {
+													color = 'green';}
+												else if ((tmp[k].numTxACK/tmp[k].numTx) < 0.5) {
+													color = 'red';}
+												var size = tmp[k].numTx/maxTx*10;
+												var addr = tmp[k].addr.substring(18,20) +tmp[k].addr.substring(21,23);
+												var title = "numTx = " + tmp[k].numTx.toString() + "<br> numTxACK = " + tmp[k].numTxACK.toString();
+												edgesArray.push({from: id, to: addr, arrows: 'to', arrowsize: size, width: size, color: color, title: title});							}
+											else if ((tmp[k].numRx) > 0) {
+												var color = 'blue';
+												var addr = tmp[k].addr.substring(18,20) +tmp[k].addr.substring(21,23);
+												var title = "numRx = " + tmp[k].numRx.toString();
+												edgesArray.push({from: id, to: addr, arrows: 'from', arrowsize: size, color: color, title: title, dashes: true,hidden: hidden});					}
+									/* Legend creation */
+									nodesArray.push({id: 1, label:'0-2 packet in queue', color: '#9EFD38',fixed: true, x: 400, y: -100,hidden: legend});
+									nodesArray.push({id: 2, label:'2-10 packet in queue', color: 'orange',fixed: true, x: 400, y: -50,hidden: legend});
+									nodesArray.push({id: 3, label:'10-17 packet in queue', color: 'red',fixed: true, x: 400, y: 0,hidden: legend});	
+									nodesArray.push({id: 4, label:'17-20 packet in queue', color: {background: 'black', highlight: {background: 'black', border: 'black'}}, font: {color: 'white'},fixed: true, x: 400, y: 50,hidden: legend});		
+										}
+									}
+									/* Updating nodes and edges with new values */
+									nodes.update(nodesArray);
+									edges.update(edgesArray);					
+								}
+								/* Graph = 0 > Creation ; Graph = 1 > Updating */
+								if (graph == 0){
+									startnetwork();
+									graph = 1;}
+								else{
+									updateNetwork();
+								}
+			                }
+			                else
+			                {
+			                    var dots = Array(n_dots + 1).join(".");
+			                    n_dots++;
+			                    if (n_dots > 3)
+			                        n_dots = 1;
+			                    $("#routing_status").text("Waiting -- routing information " + dots);
+			                }
+			            }
+			            
+			            timeoutId = setTimeout(function() {
+			                $.ajax({
+			                    dataType: "json",
+			                    url: "/graph/stats",
+			                    success: updateForData,
+			                    error: errorOnAjax
+			                });
+			            }, 1000); /* Refresh every 1 seconds*/
+			        
+			        }
+			        
+			        function errorOnAjax(jqxhr, status, errorstr) {
+			            var errText = (errorstr == null)
+			                    ? '' : ', error: ' + errorstr;
+			            console.log('Ajax error: ' + status + errText);
+			        }
+			    </script>
+
+	            <div class="row">
+	                <div class="col-lg-12">
+	                	<h5>Current RPL Routing</h5>
+	                	<div class="rel_value_fld" id="routing_status"></div>
+				    </div>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>

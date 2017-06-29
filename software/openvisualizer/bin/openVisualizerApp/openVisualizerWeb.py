@@ -48,6 +48,7 @@ import time
 # add default parameters to all bottle templates
 view = functools.partial(view, ovVersion='.'.join(list([str(v) for v in ovVersion.VERSION])))
 
+
 class OpenVisualizerWeb(eventBusClient.eventBusClient,Cmd):
     '''
     Provides web UI for OpenVisualizer. Runs as a webapp in a Bottle web
@@ -121,6 +122,9 @@ class OpenVisualizerWeb(eventBusClient.eventBusClient,Cmd):
         self.websrv.route(path='/eventBus',                               callback=self._showEventBus)
         self.websrv.route(path='/routing',                                callback=self._showRouting)
         self.websrv.route(path='/routing/dag',                            callback=self._showDAG)
+        self.websrv.route(path='/graph',                                callback=self._showGraph)
+        self.websrv.route(path='/graph/dag',                            callback=self._showDAG)
+        self.websrv.route(path='/graph/stats',                            callback=self._showStats)
         self.websrv.route(path='/eventdata',                              callback=self._getEventData)
         self.websrv.route(path='/wiresharkDebug/:enabled',                callback=self._setWiresharkDebug)
         self.websrv.route(path='/gologicDebug/:enabled',                  callback=self._setGologicDebug)
@@ -285,6 +289,26 @@ class OpenVisualizerWeb(eventBusClient.eventBusClient,Cmd):
             states = {}
         return states
 
+    
+    def _getMoteNeighbors(self, moteid):
+		ms = self.app.getMoteState(moteid)
+		isDAGroot = 0
+		if ms:
+			neighbors = ms.getStateElem(ms.ST_NEIGHBORS).toJson('data')
+		else:
+			neighbors = []
+		if ms.getStateElem(moteState.moteState.ST_IDMANAGER).isDAGroot:
+			isDAGroot = 1
+		return {'stats': neighbors, 'isDAGroot': isDAGroot}
+
+    def _getMoteQueue(self, moteid):
+	ms = self.app.getMoteState(moteid)
+        if ms:
+            queue = ms.getStateElem(ms.ST_QUEUE).toJson('data')
+	else:
+	    queue = []
+	return queue
+
     def _setWiresharkDebug(self, enabled):
         '''
         Selects whether eventBus must export debug packets.
@@ -314,8 +338,27 @@ class OpenVisualizerWeb(eventBusClient.eventBusClient,Cmd):
         states,edges = self.app.topology.getDAG()
         return { 'states': states, 'edges': edges }
 
+    def _showStats(self):
+		motes = self.app.getMoteList()
+		states = []
+		queues = []
+		DAGroot = "0"
+		for mote in motes:
+			res = self._getMoteNeighbors(mote)
+			queue = self._getMoteQueue(mote)
+			neighbors = res['stats']
+			if ( res['isDAGroot']==1):
+				DAGroot = mote
+		   	states.append({'moteid': mote, 'neighbors': neighbors})
+		   	queues.append({'moteid': mote, 'queue': queue})			
+		return {'motelist': motes, 'states': states, 'DAGroot': DAGroot, 'queues': queues}
+
     @view('routing.tmpl')
     def _showRouting(self):
+        return {'roverMode' : self.roverMode}
+
+    @view('graph.tmpl')
+    def _showGraph(self):
         return {'roverMode' : self.roverMode}
 
     @view('topology.tmpl')
