@@ -258,6 +258,15 @@ class OpenVisualizerApp(object):
                 moteDict[ms.moteConnector.serialport] = None
         return moteDict
 
+    def getMoteList(self):
+	moteList = []
+	for ms in self.moteStates:
+	    addr = ms.getStateElem(moteState.moteState.ST_IDMANAGER).get16bAddr()
+            if addr:
+		moteid = ''.join(['%02x' % b for b in addr])
+		moteList.append(moteid)
+	return moteList
+	   
 
 #============================ main ============================================
 import logging.config
