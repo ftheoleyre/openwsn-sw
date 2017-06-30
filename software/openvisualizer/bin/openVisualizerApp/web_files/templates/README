@@ -1,0 +1,22 @@
+La timeline utilise l'API Google Charts.
+
+documentation:
+developers.google.com/chart/interactive/docs/gallery/timeline
+
+J'ai essayé de mettre les colonnes de timeslot en tant que 'number'. L'API considère alors que ce sont des millisecondes. La granularité de l'unité est alors trop faible pour avoir un quadrillage propre dans la timeline.
+
+j'ai donc mis les deux colonnes en tant que date, en tant qu'années, qui dispose d'une granularité suffisament élevée pour pouvoir afficher un quadrillage (annuel par exemple). Le problème c'est que les années commencent à partir de 1900.
+
+Le tableau offsets contient les slot offsets, qui seront ajoutés à mesure qu'il apparaîteront dans le json. A chaque nouvel ajout, un tri est effectué dans la liste.
+
+Pour chaque slot schedule, on récupère son slot offset, son channel offset et son type.
+
+Le slot offset est sauvegardé dans la liste au bon index.
+
+Dans la liste (de listes) entries, on ajoute une nouvelle liste, correspondant au slot schedule. Le slot channel et le type sont placés.
+
+On place ensuite le slot offset, qui correspond au début de l'action du slot schedule.
+
+On récupère l'index de ce slot offset dans la liste des offsets. On récupère l'élément suivant dans la liste (index + 1) pour récupérer la fin de l'action du slot schedule.
+
+On sauvegarde le tout dans la liste entries.
