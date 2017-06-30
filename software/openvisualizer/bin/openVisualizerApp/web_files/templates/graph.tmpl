@@ -130,9 +130,11 @@
 									}
 
 									/* Edges creation */
+									var topo = [];
 									for (j=0; j<stats.length; j++) { 
 										var id = stats[j].moteid;
 										tmp = JSON.parse(stats[j].neighbors);
+										var neighbors = [];
 										for (k=0; k<tmp.length; k++) {
 											if ((tmp[k].numTx) > 0) {
 												var color = 'orange';
@@ -143,12 +145,30 @@
 												var size = tmp[k].numTx/maxTx*10;
 												var addr = tmp[k].addr.substring(18,20) +tmp[k].addr.substring(21,23);
 												var title = "numTx = " + tmp[k].numTx.toString() + "<br> numTxACK = " + tmp[k].numTxACK.toString();
-												edgesArray.push({from: id, to: addr, arrows: 'to', arrowsize: size, width: size, color: color, title: title});							}
-											else if ((tmp[k].numRx) > 0) {
+												edgesArray.push({from: id, to: addr, arrows: 'to', arrowsize: size, width: size, color: color, title: title});
+												neighbors.push(addr);				
+											}
+										}
+										topo.push({nodeid: id, neighbors: neighbors});	
+									}
+									for (j=0; j<stats.length; j++) {
+										var id = stats[j].moteid;
+										tmp = JSON.parse(stats[j].neighbors);
+										for (k=0; k<tmp.length; k++) {
+											if ((tmp[k].numTx) == 0 && tmp[k].numRx > 0) {
 												var color = 'blue';
 												var addr = tmp[k].addr.substring(18,20) +tmp[k].addr.substring(21,23);
 												var title = "numRx = " + tmp[k].numRx.toString();
-												edgesArray.push({from: id, to: addr, arrows: 'from', arrowsize: size, color: color, title: title, dashes: true, hidden: hidden});						}		
+												var neighbors = [];
+												for (i=0; i<topo.length; i++){
+													if (topo[i].nodeid == addr){
+														neighbors = topo[i].neighbors;
+													}
+												}
+												if ( neighbors.indexOf(id) == -1 ){
+													edgesArray.push({from: id, to: addr, arrows: 'from', arrowsize: size, color: color, title: title, dashes: true,hidden: hidden});
+												}	
+											}	
 										}
 									}
 									/* Legend creation */
@@ -242,9 +262,11 @@
 	 										}  
 										}
 									}
-									for (j=0; j<stats.length; j++) {
+									var topo = [];
+									for (j=0; j<stats.length; j++) { 
 										var id = stats[j].moteid;
 										tmp = JSON.parse(stats[j].neighbors);
+										neighbors = [];
 										for (k=0; k<tmp.length; k++) {
 											if ((tmp[k].numTx) > 0) {
 												var color = 'orange';
@@ -255,19 +277,37 @@
 												var size = tmp[k].numTx/maxTx*10;
 												var addr = tmp[k].addr.substring(18,20) +tmp[k].addr.substring(21,23);
 												var title = "numTx = " + tmp[k].numTx.toString() + "<br> numTxACK = " + tmp[k].numTxACK.toString();
-												edgesArray.push({from: id, to: addr, arrows: 'to', arrowsize: size, width: size, color: color, title: title});							}
-											else if ((tmp[k].numRx) > 0) {
+												edgesArray.push({from: id, to: addr, arrows: 'to', arrowsize: size, width: size, color: color, title: title});
+												neighbors.push(addr);				
+											}
+										}
+										topo.push({nodeid: id, neighbors: neighbors});	
+									}
+									for (j=0; j<stats.length; j++) {
+										var id = stats[j].moteid;
+										tmp = JSON.parse(stats[j].neighbors);
+										for (k=0; k<tmp.length; k++) {
+											if ((tmp[k].numTx) == 0 && tmp[k].numRx > 0) {
 												var color = 'blue';
 												var addr = tmp[k].addr.substring(18,20) +tmp[k].addr.substring(21,23);
 												var title = "numRx = " + tmp[k].numRx.toString();
-												edgesArray.push({from: id, to: addr, arrows: 'from', arrowsize: size, color: color, title: title, dashes: true,hidden: hidden});					}
+												var neighbors = [];
+												for (i=0; i<topo.length; i++){
+													if (topo[i].nodeid == addr){
+														neighbors = topo[i].neighbors;
+													}
+												}
+												if ( neighbors.indexOf(id) == -1 ){
+													edgesArray.push({from: id, to: addr, arrows: 'from', arrowsize: size, color: color, title: title, dashes: true,hidden: hidden});
+												}	
+											}	
+										}
+									}
 									/* Legend creation */
 									nodesArray.push({id: 1, label:'0-2 packet in queue', color: '#9EFD38',fixed: true, x: 400, y: -100,hidden: legend});
 									nodesArray.push({id: 2, label:'2-10 packet in queue', color: 'orange',fixed: true, x: 400, y: -50,hidden: legend});
 									nodesArray.push({id: 3, label:'10-17 packet in queue', color: 'red',fixed: true, x: 400, y: 0,hidden: legend});	
-									nodesArray.push({id: 4, label:'17-20 packet in queue', color: {background: 'black', highlight: {background: 'black', border: 'black'}}, font: {color: 'white'},fixed: true, x: 400, y: 50,hidden: legend});		
-										}
-									}
+									nodesArray.push({id: 4, label:'17-20 packet in queue', color: {background: 'black', highlight: {background: 'black', border: 'black'}}, font: {color: 'white'},fixed: true, x: 400, y: 50,hidden: legend});	
 									/* Updating nodes and edges with new values */
 									nodes.update(nodesArray);
 									edges.update(edgesArray);					
