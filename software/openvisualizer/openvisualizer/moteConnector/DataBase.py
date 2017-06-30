@@ -22,7 +22,11 @@ class DataBase(object):
             11 : ["PKT_BUFFEROVERFLOW", "addr", "comp", "asn", "trackInstance", "trackOwner", "length", "type", "slotOffset", "frequency", "l2Src", "rssi", "lqi", "crc", "expid"],
             12 : ["DIOTX", "addr", "comp", "asn", "expid"],
             13 : ["DAOTX", "addr", "comp", "asn", "parent", "expid"],
-            14 : ["NODESTATE", "addr", "comp", "asn", "dutyCycleRatio", "numDeSync", "expid"]
+            14 : ["NODESTATE", "addr", "comp", "asn", "dutyCycleRatio", "numDeSync", "expid"],
+            15 : ["6PSTATE", "addr", "comp", "asn", "trackInstance", "trackOwner", "l2Src", "numCells", "slot1", "offset1", "linkoptions1", "slot2", "offset2", "linkoptions2", "slot3", "offset3", "linkoptions3", "expid"],
+            16 : ["PDR", "asn", "pdr", "expid"],
+            17 : ["RT_STATS", "pdr", "e2e", "JIndex", "expid"],
+            18 : ["E2E", "asn", "e2e", "expid"]
         }
 
         self.typecolumn = {
@@ -50,7 +54,20 @@ class DataBase(object):
             "lqi" : "INT",
             "crc" : "VARCHAR(5)",
             "length" : "INT",
-            "expid" : "INT"
+            "expid" : "INT",
+            "numCells" : "INT",
+            "slot1" : "INT",
+            "offset1" : "INT",
+            "linkoptions1" : "INT",
+            "slot2" : "INT",
+            "offset2" : "INT",
+            "linkoptions2" : "INT",
+            "slot3" : "INT",
+            "offset3" : "INT",
+            "linkoptions3" : "INT",
+            "pdr" : "FLOAT",
+            "e2e" : "FLOAT",
+            "JIndex" : "FLOAT"
         }
 
         self.config = {
@@ -77,11 +94,40 @@ class DataBase(object):
             self.cur.execute("UNLOCK TABLES")
             self.db.commit()
 
+    def Store(self, type, data):
+        # création d'une table avec colonnes correspondantes si inexistante
+        crtable = """CREATE TABLE IF NOT EXISTS {}(""".format(self.typedata[type][0])
+        for i in range (1, len(self.typedata[type])-1):
+            crtable+="""{} {}, """.format(self.typedata[type][i], self.typecolumn[self.typedata[type][i]])
+        crtable+="""{} {})""".format(self.typedata[type][len(self.typedata[type])-1], self.typecolumn[self.typedata[type][len(self.typedata[type])-1]])
+        print(crtable)
+        self.cur.execute(crtable)
+
+        # insertion
+        insert = """INSERT INTO {} (""".format(self.typedata[type][0])
+
+        for i in range (1, len(self.typedata[type])-1):
+            insert+="""{}, """.format(self.typedata[type][i])
+        insert+="""{})""".format(self.typedata[type][len(self.typedata[type])-1])
+
+        insert+=""" VALUES ("""
+        for i in range(0, len(data)):
+            if (self.typecolumn[self.typedata[type][i+1]] == "INT"):
+                insert+="""{}, """.format(data[i])
+            else:
+                insert+="""'{}', """.format(data[i])
+
+        insert+="""{})""".format(self.expid)
+
+        self.cur.execute(insert)
+
+        self.cur.execute("UNLOCK TABLES")
+
+        self.db.commit()
+
     def update_pdr(self):
-        print("APPEL")
-        self.cur.execute("CREATE TABLE IF NOT EXISTS RT_STATS (pdr FLOAT, e2e FLOAT, JIndex FLOAT, expid INT)")
-        self.cur.execute("DROP TABLE IF EXISTS PDR")
-        self.cur.execute("CREATE TABLE IF NOT EXISTS PDR(pdr FLOAT, expid INT)")
+        self.cur.execute("CREATE TABLE IF NOT EXISTS PDR(asn INT, pdr FLOAT, expid INT)")
+        self.cur.execute("CREATE TABLE IF NOT EXISTS RT_STATS(pdr FLOAT, e2e FLOAT, JIndex FLOAT, expid INT)")
         self.cur.execute("DELETE FROM RT_STATS WHERE expid = {}".format(self.expid))
         self.cur.execute("UNLOCK TABLES")
 
@@ -91,7 +137,10 @@ class DataBase(object):
         self.cur.execute("SELECT COUNT(*) FROM DATA_RX")
         count_rx = self.cur.fetchone()[0]
         pdr = float(count_gen) / float(count_rx)
-        self.cur.execute("INSERT INTO PDR (pdr) VALUES ({})".format(pdr))
+        self.cur.execute("SELECT MAX(asn) from DATA_RX")
+        asn = self.cur.fetchone()[0]
+
+        self.Store(16, [asn, float(pdr)])
 
         # E2E Delay
         self.cur.execute("SELECT asn, trackOwner, seqNum FROM DATA_RX")
@@ -121,11 +170,13 @@ class DataBase(object):
         else:
             e2e = -1
 
+        self.Store(18, [asn, float(e2e)])
+
         # Jain Index
-        self.cur.execute("SELECT pdr FROM PDR")
+        self.cur.execute("SELECT pdr FROM PDR WHERE expid={}".format(self.expid))
         pdrl = self.cur.fetchall()
 
-        self.cur.execute("SELECT COUNT(*) FROM PDR")
+        self.cur.execute("SELECT COUNT(*) FROM PDR WHERE expid={}".format(self.expid))
         c = self.cur.fetchone()
 
         haut = 0
@@ -144,38 +195,4 @@ class DataBase(object):
             jindex = -1
 
         # Stockage
-        query = "INSERT INTO RT_STATS (pdr, e2e, JIndex, expid) VALUES ({}, {}, {}, {})".format(float(pdr), float(e2e), float(jindex), self.expid)
-        print(query)
-        self.cur.execute(query)
-
-    def Store(self, type, data):
-        # création d'une table avec colonnes correspondantes si inexistante
-        crtable = """CREATE TABLE IF NOT EXISTS {}(""".format(self.typedata[type][0])
-        for i in range (1, len(self.typedata[type])-1):
-            crtable+="""{} {}, """.format(self.typedata[type][i], self.typecolumn[self.typedata[type][i]])
-        crtable+="""{} {})""".format(self.typedata[type][len(self.typedata[type])-1], self.typecolumn[self.typedata[type][len(self.typedata[type])-1]])
-        print(crtable)
-        self.cur.execute(crtable)
-
-        # insertion
-        insert = """INSERT INTO {} (""".format(self.typedata[type][0])
-
-        for i in range (1, len(self.typedata[type])-1):
-            insert+="""{}, """.format(self.typedata[type][i])
-        insert+="""{})""".format(self.typedata[type][len(self.typedata[type])-1])
-
-        insert+=""" VALUES ("""
-        for i in range(0, len(data)):
-            if (self.typecolumn[self.typedata[type][i+1]] == "INT"):
-                insert+="""{}, """.format(data[i])
-            else:
-                insert+="""'{}', """.format(data[i])
-
-        insert+="""{})""".format(self.expid)
-
-        print(insert)
-        self.cur.execute(insert)
-
-        self.cur.execute("UNLOCK TABLES")
-
-        self.db.commit()
+        self.Store(17, [float(pdr), float(e2e), float(jindex)])

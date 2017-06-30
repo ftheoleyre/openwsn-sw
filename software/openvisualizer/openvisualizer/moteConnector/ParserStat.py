@@ -19,6 +19,7 @@ import Parser
 from array import array
 
 from DataBase import DataBase
+from Graphs import Graphs
 
 class ParserStat(Parser.Parser):
 
@@ -40,6 +41,7 @@ class ParserStat(Parser.Parser):
     SERTYPE_DIOTX              = 12
     SERTYPE_DAOTX              = 13
     SERTYPE_NODESTATE          = 14
+    SERTYPE_6PSTATE            = 15
 
     def __init__(self, expid):
 
@@ -60,6 +62,8 @@ class ParserStat(Parser.Parser):
         self.dbo = DataBase(self.expid)
         self.dbo.reinit()
 
+        # def graphs
+        self.gr = Graphs(self.expid)
 
     #======================== public ==========================================
 
@@ -329,7 +333,9 @@ class ParserStat(Parser.Parser):
                 self.BytesToAddr(input[31:39])
             ])
 
+            print("OK")
             self.dbo.update_pdr()
+            self.gr.pdr()
 
         elif (statType == self.SERTYPE_PKT_TX):
             self.LogPktTx(addr, self.ByteToCompType(mycomponent), asnbytes, statType, input, "STAT_PK_TX");
@@ -562,6 +568,29 @@ class ParserStat(Parser.Parser):
                 int(self.BytesToInt(asnbytes)),
                 double(dcr),
                 int(input[17])
+            ])
+
+        elif (statType == self.SERTYPE_6PSTATE):
+            self.dbo.Store(self.SERTYPE_6PSTATE,[
+                self.BytesToAddr(addr),
+                self.ByteToCompType(mycomponent),
+                int(self.BytesToInt(asnbytes)),
+                int(self.BytesToInt(input[9:11])), # trackinstance
+                self.BytesToAddr(input[11:19]), # trackowner
+                self.BytesToAddr(input[19:27]), # addr
+                int(input[27]), # numCells
+                # Cell 1
+                int(self.BytesToInt(input[28:30])), # slot
+                int(self.BytesToInt(input[30:32])), # offset
+                int(input[32]), # linkoptions
+                # Cell 2
+                int(self.BytesToInt(input[33:35])), # slot
+                int(self.BytesToInt(input[35:37])), # offset
+                int(input[37]), # linkoptions
+                # Cell 3
+                int(self.BytesToInt(input[38:40])), # slot
+                int(self.BytesToInt(input[40:42])), # offset
+                int(input[42]) # linkoptions
             ])
 
         else:

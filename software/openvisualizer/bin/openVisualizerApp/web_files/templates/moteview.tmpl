@@ -2,16 +2,18 @@
 <html>
 	<head>
 		%include head.tmpl
+		<script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+		</script>
 	</head>
 	<body>
 		<script>
 		    // Identifies the function that refreshes mote state on an interval.
 		    var timeoutId;
 		    var moteid;
-		    
+
 		    $(function() {
-		        
-		        
+
+
 		        // Set selected mote if so specified in request. Must do this after
 		        // grid variables have been defined so mote selection works.
 		        % if requested_mote:
@@ -46,7 +48,7 @@
 		                <script>
 		                    $("#mote_select").change(function() {
 		                        moteid =  $(this).val()
-		                        
+
 		                        if (moteid != null && moteid != undefined && moteid != 'none') {
 		                            console.log('Update for mote selection: ' + moteid);
 		                            // Store to allow automatically selecting this mote.
@@ -65,7 +67,7 @@
 		                            $("#moteview_link").attr("href", "/moteview");
 		                            updateForData({});
 		                        }
-		                        
+
 		                        // Don't allow to reselect null option.
 		                        //$("#mote_select option[value='none']").remove();
 		                    });
@@ -118,14 +120,14 @@
 
 	            <div class="row">
 	                <div class="col-lg-12">
-	                	
+
 	                    <div class="panel panel-default">
 	                        <div class="panel-heading">
 	                            Data
 	                        </div>
-	                        
+
 	                        <div class="panel-body">
-	                        
+
 	                            <ul class="nav nav-tabs">
 	                                <li class="active"><a href="#network" data-toggle="tab">Network</a>
 	                                </li>
@@ -255,7 +257,9 @@
 	                                        <div class="col-lg-12">
 	                                            <div class="panel-body">
 	                                                <h5>Slot Schedule</h5>
-	                                                <div id="tab-slot-sched" class="table-responsive"></div>
+	                                                <div id="tab-slot-sched">
+														<div id="chart_div"></div>
+													</div>
 	                                                <br>
 	                                                <h5>Packet Queue</h5>
 	                                                <div id="tab-pack-queue" class="table-responsive"></div>
@@ -288,7 +292,7 @@
 									            console.log('Asn not found in result');
 									            hasJson = false;
 									        }
-									        
+
 									        if (hasJson) {
 									            asnJson      = $.parseJSON(json.Asn)[0];
 									            idJson       = $.parseJSON(json.IdManager)[0];
@@ -302,11 +306,11 @@
 									            nbrsJson     = $.parseJSON(json.Neighbors);
                                                 kaPeriodJson = $.parseJSON(json.kaPeriod)[0];
 									        }
-									        
+
 									        // Exclude tailing description from server
 									        $("#prefix_fld").text(hasJson ? idJson.myPrefix.split(' ')[0] : '');
 									        $("#id64_fld").text(  hasJson ? idJson.my64bID.split(' ')[0]  : '');
-									        
+
 									        $("#dagroot_fld").text(      hasJson && idJson.isDAGroot > 0 ? 'Yes' : 'No');
 									        $("#bridge_fld").text(       hasJson && idJson.isBridge > 0 ? 'Yes' : 'No');
 									        $("#sync_fld").text(         hasJson && syncJson.isSync > 0 ? 'Synchronized!' : 'Not synchronized');
@@ -327,38 +331,73 @@
 									        $("#dutycycle_fld").text(    hasJson ? macstatsJson.dutyCycle          : '');
 									        $("#issync_fld").text(       hasJson ? macstatsJson.isSync             : '');
                                             $("#kaperiod_fld").text(     hasJson ? kaPeriodJson.kaPeriod           : '');
-									        
+
 									        // Slot Schedule responsive table
 									        if (hasJson) {
-									        	var tbl_body = "<table class=\"table table-striped table-bordered table-hover\" id=\"dataTables-example\"><thead><tr><th>Offset</th><th>Type</th><th>Shared?</th><th>Channel</th><th>Nbr Type</th><th>RX</th><th>TX</th><th>TX ACK</th><th>Track Instance</th><th>Track Owner</th><th>Last ASN</th></tr></thead><tbody>";
+												google.charts.load('current', {'packages':['timeline']});
+												google.charts.setOnLoadCallback(drawChart);
 
-										        $.each(schedJson, function() {
-											        var tbl_row = "<td>" + this['slotOffset'] + "</td>";
-											        tbl_row += "<td>" + this['type'] + "</td>";
-											        tbl_row += "<td>" + this['shared'] + "</td>";
-											        tbl_row += "<td>" + this['channelOffset'] + "</td>";
-											        tbl_row += "<td>" + this['neighbor'] + "</td>";
-											        tbl_row += "<td>" + this['numRx'] + "</td>";
-											        tbl_row += "<td>" + this['numTx'] + "</td>";
-											        tbl_row += "<td>" + this['numTxACK'] + "</td>";											        
-											        tbl_row += "<td>" + this['trackInstance'] + "</td>";
-											        tbl_row += "<td>" + this['trackOwner'] + "</td>";
-											        tbl_row += "<td>" + this['lastUsedAsn'] + "</td>";
-											        tbl_body += "<tr class=\"odd gradeX\">" + tbl_row + "</tr>";
+												function drawChart() {
+													var data = new google.visualization.DataTable();
+													data.addColumn('string', 'Channel Offset');
+													data.addColumn('string', 'Type');
+													data.addColumn('number', 'Time Slot1');
+													data.addColumn('number', 'Time Slot2');
+
+													var entries = [];
+
+													$.each(schedJson, function() {
+														entries.push([this["channelOffset"].toString(), this["type"], this["slotOffset"]*1000, this["slotOffset"]*1000]);
+													});
+
+													$.each(entries, function() {
+														console.log(this[0] + " " + this[2]);
+													});
+
+													data.addRows(entries);
+
+													var options = {
+														height: 462,
+														width: 1462,
+													};
+
+													var chart = new google.visualization.Timeline(document.getElementById('chart_div'));
+
+													chart.draw(data, options);
+												}
+											}
+
+											/*// Slot Schedule responsive table
+											if (hasJson) {
+												var tbl_body = "<table class=\"table table-striped table-bordered table-hover\" id=\"dataTables-example\"><thead><tr><th>Offset</th><th>Type</th><th>Shared?</th><th>Channel</th><th>Nbr Type</th><th>RX</th><th>TX</th><th>TX ACK</th><th>Track Instance</th><th>Track Owner</th><th>Last ASN</th></tr></thead><tbody>";
+
+												$.each(schedJson, function() {
+													var tbl_row = "<td>" + this['slotOffset'] + "</td>";
+													tbl_row += "<td>" + this['type'] + "</td>";
+													tbl_row += "<td>" + this['shared'] + "</td>";
+													tbl_row += "<td>" + this['channelOffset'] + "</td>";
+													tbl_row += "<td>" + this['neighbor'] + "</td>";
+													tbl_row += "<td>" + this['numRx'] + "</td>";
+													tbl_row += "<td>" + this['numTx'] + "</td>";
+													tbl_row += "<td>" + this['numTxACK'] + "</td>";
+													tbl_row += "<td>" + this['trackInstance'] + "</td>";
+													tbl_row += "<td>" + this['trackOwner'] + "</td>";
+													tbl_row += "<td>" + this['lastUsedAsn'] + "</td>";
+													tbl_body += "<tr class=\"odd gradeX\">" + tbl_row + "</tr>";
 												});
 
 												tbl_body += "</tbody></table>";
-											    //console.log(tbl_body);
-											    $("#tab-slot-sched").html(tbl_body).text();
-											}
+												//console.log(tbl_body);
+												$("#tab-slot-sched").html(tbl_body).text();
+											}*/
 
 									        // Package Queue responsive table
 									        if (hasJson) {
 									        	var tbl_body = "<table class=\"table table-striped table-bordered table-hover\" id=\"dataTables-example\"><thead><tr><th>Creator</th><th>Owner</th><th>Timeout ASN</th><th>track instance</th><th>track owner</th><th>nextHop</th></tr></thead><tbody>";
-										        
+
 										        $.each(queueJson, function() {
 											        var tbl_row = "<td>" + this['creator'] + "</td>";
-											        tbl_row += "<td>" + this['owner'] + "</td>";											        
+											        tbl_row += "<td>" + this['owner'] + "</td>";
 												    tbl_row += "<td>" + this['timeoutAsn'] + "</td>";
 											        tbl_row += "<td>" + this['trackInstance'] + "</td>";
 											        tbl_row += "<td>" + this['trackOwner'] + "</td>";
@@ -374,7 +413,7 @@
 											// Neighbors responsive table
 									        if (hasJson) {
 									        	var tbl_body = "<table class=\"table table-striped table-bordered table-hover\" id=\"dataTables-example\"><thead><tr><th>Used</th><th>Parent</th><th>Stable</th><th>Stability</th><th>Address</th><th>DAG Rank</th><th>JP</th><th>RSS</th><th>RX</th><th>TX</th><th>TX ACK</th><th>Wrap</th><th>ASN</th></tr></thead><tbody>";
-									        
+
 										        $.each(nbrsJson, function() {
 											        var tbl_row = "<td>" + this['used'] + "</td>";
 											        tbl_row += "<td>" + this['parentPreference'] + "</td>";
@@ -397,7 +436,7 @@
 											    $("#tab-nbrs").html(tbl_body).text();
 											}
 
-									        
+
 									        if (hasJson) {
 									            timeoutId = setTimeout(function() {
 									                $.ajax({
@@ -409,7 +448,7 @@
 									            }, 5000);
 									        }
 									    }
-									    
+
 									    function updateForToggle(json) {
 									        // Reset timeout to 1 second for the next data retrieval, to
 									        // provide quicker feedback to user that toggle succeeded.
@@ -428,7 +467,7 @@
 									            });
 									        }, 1000);
 									    }
-									    
+
 									    function errorOnAjax(jqxhr, status, errorstr) {
 									        var errText = (errorstr == null)
 									                ? '' : ', error: ' + errorstr;
@@ -436,11 +475,11 @@
 									    }
 								    </script>
 	                            </div>
-	                        
+
 	                        </div>
 	                    </div>
-	                	
-	                </div>  
+
+	                </div>
 	            </div>
 	        </div>
 	    </div>
