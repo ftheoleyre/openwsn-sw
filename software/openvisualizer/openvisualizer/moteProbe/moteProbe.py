@@ -75,18 +75,31 @@ def findSerialPorts(isIotMotes=False):
         # Find all OpenWSN motes that answer to TRIGGERSERIALECHO commands
         for port in serialports:
             probe = moteProbe(serialport=(port[0],BAUDRATE_LOCAL_BOARD))
+            print(probe.portname)
             tester = SerialTester(probe.portname)
             tester.setNumTestPkt(1)
             tester.setTimeout(2)
-            tester.test(blocking=True)
-            if tester.getStats()['numOk'] >= 1:
-                mote_ports.append((port[0],BAUDRATE_LOCAL_BOARD));
+            # stop the test as soon as a packet is ok
+            test=0
+            while True:
+               tester.test(blocking=True)
+               print(tester.getStats())
+
+               if tester.getStats()['numOk'] >= 1:
+                  mote_ports.append((port[0],BAUDRATE_LOCAL_BOARD));
+                  break
+               #at most 3 retries
+               if (test>5):
+                  break;
+               test = test + 1
+
             probe.close()
             probe.join()
     
     # log
     log.info("discovered following COM port: {0}".format(['{0}@{1}'.format(s[0],s[1]) for s in mote_ports]))
-    
+    print("discovered following COM port: {0}".format(['{0}@{1}'.format(s[0],s[1]) for s in mote_ports]))
+
     return mote_ports
 
 #============================ class ===========================================
