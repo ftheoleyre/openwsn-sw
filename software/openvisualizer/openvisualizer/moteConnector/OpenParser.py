@@ -15,6 +15,7 @@ import ParserInfoErrorCritical as ParserIEC
 import ParserData
 import ParserPacket
 import ParserStat
+import ParserPrintf
 
 class OpenParser(Parser.Parser):
     
@@ -28,7 +29,7 @@ class OpenParser(Parser.Parser):
     SERFRAME_MOTE2PC_REQUEST           = ord('R')
     SERFRAME_MOTE2PC_SNIFFED_PACKET    = ord('P')
     SERFRAME_MOTE2PC_STAT              = ord('T')
-
+    SERFRAME_MOTE2PC_PRINTF            = ord('F')
     SERFRAME_PC2MOTE_SETDAGROOT        = ord('R')
     SERFRAME_PC2MOTE_DATA              = ord('D')
     SERFRAME_PC2MOTE_TRIGGERSERIALECHO = ord('S')
@@ -54,7 +55,7 @@ class OpenParser(Parser.Parser):
         self.parserData      = ParserData.ParserData()
         self.parserPacket    = ParserPacket.ParserPacket()
         self.parserStat      = ParserStat.ParserStat()
-        
+        self.parserPrintf    = ParserPrintf.ParserPrintf()
         # register subparsers
         self._addSubParser(
             index  = 0,
@@ -90,6 +91,11 @@ class OpenParser(Parser.Parser):
             index  = 0,
             val    = self.SERFRAME_MOTE2PC_STAT,
             parser = self.parserStat.parseInput,
+        )
+        self._addSubParser(
+            index  = 0,
+            val    = self.SERFRAME_MOTE2PC_PRINTF,
+            parser = self.parserPrintf.parseInput,
         )
     #======================== public ==========================================
     
