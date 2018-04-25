@@ -1,4 +1,4 @@
-# Copyright (c) 2015, CNRS. 
+# Copyright (c) 2018, CNRS.
 # All rights reserved. 
 #  
 # Released under the BSD 3-Clause license as published at the link below.
@@ -28,11 +28,10 @@ class ParserStat(Parser.Parser):
     SERTYPE_PKT_RX             = 2
     SERTYPE_CELL               = 3
     SERTYPE_ACK                = 4
-    SERTYPE_PKT_DROPPED        = 5
-    SERTYPE_DIO                = 6
-    SERTYPE_DAO                = 7
-    SERTYPE_NODESTATE          = 8
-    SERTYPE_6PCMD              = 9
+    SERTYPE_DIO                = 5
+    SERTYPE_DAO                = 6
+    SERTYPE_NODESTATE          = 7
+    SERTYPE_6PCMD              = 8
 
 
  
@@ -40,7 +39,7 @@ class ParserStat(Parser.Parser):
         
         # log
         log.debug('create ParserStat instance')
-        
+
         # initialize parent class
         Parser.Parser.__init__(self,self.HEADER_LENGTH)
         
@@ -221,28 +220,26 @@ class ParserStat(Parser.Parser):
  
        #info to write when a packet is transmitted
     def LogPktTx(self, addr, asnbytes, input, message):
-        log.info('{9}|addr={0}|asn={1}|length={2}|frameType={3}|slotOffset={4}|frequency={5}|l2Dest={6}|txpower={7}|numTxAttempts={8}|L3Src={10}|L3Dest={11}|L4Proto={12}|L4SrcPort={13}|L4DestPort={14}'.format(
+        log.info('{0}|addr={1}|asn={2}|length={3}|frameType={4}|slotOffset={5}|frequency={6}|txpower={7}|umTxAttempts={8}|l2Dest={9}|nL3Src={10}|L3Dest={11}|'.format(
+            message,
             self.BytesToAddr(addr),
             self.BytesToString(asnbytes),
             input[8],
             self.ByteToFrameType(input[9]),
             self.BytesToString(input[10:12]),
             input[12],
-            self.BytesToAddr(input[13:21]),
-            input[21],
-            input[22],
-            message,
+            input[13],
+            input[14],
+            self.BytesToAddr(input[15:23]),
             self.BytesToAddr(input[23:39]),
             self.BytesToAddr(input[39:55]),
-            self.ByteToL4protocol(input[55]),
-            self.BytesToString(input[56:58]),
-            self.BytesToString(input[58:61])
             ));
 
 
     #info to write when a packet is received
     def LogPktRx(self, addr, asnbytes, input, message):
-        log.info('{10}|addr={0}|asn={1}|length={2}|frameType={3}|slotOffset={4}|frequency={5}|l2Src={6}|rssi={7}|lqi={8}|crc={9}'.format(
+        log.info('{0}|addr={1}|asn={2}|length={3}|frameType={4}|slotOffset={5}|frequency={5}|l2Src={6}|rssi={7}|lqi={8}|crc={9}'.format(
+            message,
             self.BytesToAddr(addr),
             self.BytesToString(asnbytes),
             input[8],
@@ -253,24 +250,6 @@ class ParserStat(Parser.Parser):
             input[21],
             input[22],
             input[23],
-            message,
-            ));
-
-    #info to write when a packet is dropped
-    def LogPktDropped(self, addr, asnbytes, input):
-        log.info('{5}|addr={0}|asn={1}|length={2}|frameType={3}|l2Src={4}|L3Src={11}|L3Dest={12}|L4Proto={13}|L4SrcPort={14}|L4DestPort={15}'.format(
-            self.BytesToAddr(addr),
-            self.BytesToString(asnbytes),
-            input[8],
-            input[9],
-            input[10],
-            self.BytesToAddr(input[11:19]),
-            message,
-            self.BytesToAddr(input[23:39]),
-            self.BytesToAddr(input[39:55]),
-            self.ByteToL4protocol(input[55]),
-            self.BytesToString(input[56:58]),
-            self.BytesToString(input[58:61])
             ));
 
 
@@ -282,9 +261,7 @@ class ParserStat(Parser.Parser):
         # log
         if log.isEnabledFor(logging.DEBUG):
             log.debug('received stat {0}'.format(input))
-       
-            
-                   
+                  
         #headers
         addr = input[0:2]
         asnbytes = input[2:7]  
@@ -317,9 +294,6 @@ class ParserStat(Parser.Parser):
                 self.ByteToStatus(input[8]),
                 self.BytesToAddr(input[9:17])
                 ));
-        elif (statType == self.SERTYPE_PKT_DROPPED):
-           self.LogPktDropped(addr, asnbytes, statType, input, "STAT_PK_DROPPED");
-
 
         elif (statType == self.SERTYPE_DIO):
             log.info('STAT_DIO|addr={0}|asn={1}|status={2}|rplinstanceId={3}|rank={4}|DODAGID={5}'.format(
