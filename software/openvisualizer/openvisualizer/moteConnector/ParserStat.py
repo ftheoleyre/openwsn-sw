@@ -220,7 +220,7 @@ class ParserStat(Parser.Parser):
  
        #info to write when a packet is transmitted
     def LogPktTx(self, addr, asnbytes, input, message):
-        log.info('{0}|addr={1}|asn={2}|length={3}|frameType={4}|slotOffset={5}|frequency={6}|txpower={7}|umTxAttempts={8}|l2Dest={9}|nL3Src={10}|L3Dest={11}|'.format(
+        log.info('{0}|addr={1}|asn={2}|length={3}|frameType={4}|slotOffset={5}|frequency={6}|txpower={7}|numTxAttempts={8}|l2Dest={9}|L3Src={10}|L3Dest={11}|'.format(
             message,
             self.BytesToAddr(addr),
             self.BytesToString(asnbytes),
