@@ -220,17 +220,17 @@ class ParserStat(Parser.Parser):
  
        #info to write when a packet is transmitted
     def LogPktTx(self, addr, asnbytes, input, message):
-        log.info('{0}|addr={1}|asn={2}|length={3}|frameType={4}|slotOffset={5}|frequency={6}|txpower={7}|numTxAttempts={8}|l2Dest={9}|L3Src={10}|L3Dest={11}|'.format(
+        log.info('{0}|addr={1}|asn={2}|l2Dest={3}|length={4}|frameType={5}|slotOffset={6}|frequency={7}|txpower={8}|numTxAttempts={9}|L3Src={10}|L3Dest={11}|'.format(
             message,
             self.BytesToAddr(addr),
             self.BytesToString(asnbytes),
-            input[8],
-            self.ByteToFrameType(input[9]),
-            self.BytesToString(input[10:12]),
-            input[12],
-            input[13],
-            input[14],
-            self.BytesToAddr(input[15:23]),
+            self.BytesToAddr(input[8:16]),
+            input[16],
+            self.ByteToFrameType(input[17]),
+            self.BytesToString(input[18:20]),
+            input[20],
+            input[21],
+            input[22],
             self.BytesToAddr(input[23:39]),
             self.BytesToAddr(input[39:55]),
             ));
@@ -238,15 +238,15 @@ class ParserStat(Parser.Parser):
 
     #info to write when a packet is received
     def LogPktRx(self, addr, asnbytes, input, message):
-        log.info('{0}|addr={1}|asn={2}|length={3}|frameType={4}|slotOffset={5}|frequency={5}|l2Src={6}|rssi={7}|lqi={8}|crc={9}'.format(
+        log.info('{0}|addr={1}|asn={2}|l2Src={3}|length={4}|frameType={5}|slotOffset={6}|frequency={7}|rssi={8}|lqi={9}|crc={10}|'.format(
             message,
             self.BytesToAddr(addr),
             self.BytesToString(asnbytes),
-            input[8],
-            self.ByteToFrameType(input[9]),
-            self.BytesToString(input[10:12]),
-            input[12],
-            self.BytesToAddr(input[13:21]),
+            self.BytesToAddr(input[8:16]),
+            input[16],
+            self.ByteToFrameType(input[17]),
+            self.BytesToString(input[18:20]),
+            input[20],
             input[21],
             input[22],
             input[23],
